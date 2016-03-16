@@ -49,6 +49,8 @@ from elasticluster.subcommands import GC3PieConfig
 from elasticluster.subcommands import RemoveNode
 from elasticluster.subcommands import ExportCluster
 from elasticluster.subcommands import ImportCluster
+from elasticluster.subcommands import AddUser
+from elasticluster.subcommands import DelUser
 from elasticluster.conf import Configurator
 from elasticluster.exceptions import ConfigurationError
 from elasticluster.migration_tools import MigrationCommand
@@ -79,6 +81,8 @@ class ElastiCluster(cli.app.CommandLineApp):
                     RemoveNode(self.params),
                     ExportCluster(self.params),
                     ImportCluster(self.params),
+                    AddUser(self.params),
+                    DelUser(self.params),
                     ]
 
         # global parameters

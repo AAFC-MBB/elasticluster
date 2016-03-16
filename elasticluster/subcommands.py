@@ -1064,3 +1064,112 @@ class ImportCluster(AbstractCommand):
             print("Successfully imported cluster from ZIP %s to %s"
                   % (self.params.file, repo.storage_path))
         sys.exit(rc)
+
+class AddUser(AbstractCommand):
+    """
+    Add a new user to all nodes of the specified cluster.
+    """
+
+    def setup(self, subparsers):
+        parser = subparsers.add_parser(
+            "add-user", help="Add a new user to all nodes of the specified cluster",
+            description=self.__doc__)
+        parser.set_defaults(func=self)
+        parser.add_argument('cluster', help="name of the cluster")
+        parser.add_argument('username', help="username of the new user")
+        parser.add_argument('-v', '--verbose', action='count', default=0,
+                            help="Increase verbosity")
+
+    def execute(self):
+        configurator = get_configurator(self.params.config,
+                                        storage_path=self.params.storage,
+                                        include_config_dirs=True)
+        # Add user to frontend node
+        cluster_name = self.params.cluster
+        new_user = self.params.username
+        try:
+            cluster = configurator.load_cluster(cluster_name)
+            cluster.update()
+        except (ClusterNotFound, ConfigurationError) as ex:
+            log.error("Setting up cluster %s: %s\n" %
+                      (cluster_name, ex))
+            return
+        frontend = cluster.get_frontend_node()
+        try:
+            # ensure we can connect to the host
+            if not frontend.preferred_ip:
+                # Ensure we can connect to the node, and save the value of `preferred_ip`
+                ssh = frontend.connect(keyfile=cluster.known_hosts_file)
+                if ssh:
+                    ssh.close()
+                cluster.repository.save_or_update(cluster)
+        except NodeNotFound as ex:
+            log.error("Unable to connect to the frontend node: %s" % str(ex))
+            sys.exit(1)
+        host = frontend.connection_ip()
+        username = frontend.image_user
+        knownhostsfile = cluster.known_hosts_file if cluster.known_hosts_file \
+                         else '/dev/null'
+        ssh_cmdline = ["ssh",
+                       "-i", frontend.user_key_private,
+                       "-o", "UserKnownHostsFile=%s" % knownhostsfile,
+                       "-o", "StrictHostKeyChecking=yes",
+                       "-t",
+                       '%s@%s' % (username, host),
+                       "sudo useradd %s && stty -echo && sudo passwd %s && stty echo && . /usr/share/gridengine/default/common/user-add.sh %s" % (new_user, new_user, new_user)]
+        log.debug("Running command `%s`" % str.join(' ', ssh_cmdline))
+        os.execlp("ssh", *ssh_cmdline)
+
+class DelUser(AbstractCommand):
+    """
+    Delete a user from the specified cluster.
+    """
+
+    def setup(self, subparsers):
+        parser = subparsers.add_parser(
+            "del-user", help="Delete a user from the specified cluster",
+            description=self.__doc__)
+        parser.set_defaults(func=self)
+        parser.add_argument('cluster', help="name of the cluster")
+        parser.add_argument('username', help="username of the user to delete")
+        parser.add_argument('-v', '--verbose', action='count', default=0,
+                            help="Increase verbosity")
+
+    def execute(self):
+        configurator = get_configurator(self.params.config,
+                                        storage_path=self.params.storage,
+                                        include_config_dirs=True)
+        # Add user to frontend node
+        cluster_name = self.params.cluster
+        del_user = self.params.username
+        try:
+            cluster = configurator.load_cluster(cluster_name)
+            cluster.update()
+        except (ClusterNotFound, ConfigurationError) as ex:
+            log.error("Setting up cluster %s: %s\n" %
+                      (cluster_name, ex))
+            return
+        frontend = cluster.get_frontend_node()
+        try:
+            # ensure we can connect to the host
+            if not frontend.preferred_ip:
+                # Ensure we can connect to the node, and save the value of `preferred_ip`
+                ssh = frontend.connect(keyfile=cluster.known_hosts_file)
+                if ssh:
+                    ssh.close()
+                cluster.repository.save_or_update(cluster)
+        except NodeNotFound as ex:
+            log.error("Unable to connect to the frontend node: %s" % str(ex))
+            sys.exit(1)
+        host = frontend.connection_ip()
+        username = frontend.image_user
+        knownhostsfile = cluster.known_hosts_file if cluster.known_hosts_file \
+                         else '/dev/null'
+        ssh_cmdline = ["ssh",
+                       "-i", frontend.user_key_private,
+                       "-o", "UserKnownHostsFile=%s" % knownhostsfile,
+                       "-o", "StrictHostKeyChecking=yes",
+                       '%s@%s' % (username, host),
+                       "sudo userdel -r %s && . /usr/share/gridengine/default/common/user-del.sh %s" % (del_user, del_user)]
+        log.debug("Running command `%s`" % str.join(' ', ssh_cmdline))
+        os.execlp("ssh", *ssh_cmdline)

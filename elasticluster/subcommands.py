@@ -1116,7 +1116,7 @@ class AddUser(AbstractCommand):
                        "-o", "StrictHostKeyChecking=yes",
                        "-t",
                        '%s@%s' % (username, host),
-                       "sudo useradd %s && stty -echo && sudo passwd %s && stty echo && . /usr/share/gridengine/default/common/user-add.sh %s" % (new_user, new_user, new_user)]
+                       "sudo useradd %s && stty -echo && sudo passwd %s && stty echo && . /usr/share/gridengine/default/common/add-user.sh %s" % (new_user, new_user, new_user)]
         log.debug("Running command `%s`" % str.join(' ', ssh_cmdline))
         os.execlp("ssh", *ssh_cmdline)
 
@@ -1170,6 +1170,6 @@ class DelUser(AbstractCommand):
                        "-o", "UserKnownHostsFile=%s" % knownhostsfile,
                        "-o", "StrictHostKeyChecking=yes",
                        '%s@%s' % (username, host),
-                       "sudo userdel -r %s && . /usr/share/gridengine/default/common/user-del.sh %s" % (del_user, del_user)]
+                       "sudo userdel -r %s && . /usr/share/gridengine/default/common/del-user.sh %s" % (del_user, del_user)]
         log.debug("Running command `%s`" % str.join(' ', ssh_cmdline))
         os.execlp("ssh", *ssh_cmdline)
